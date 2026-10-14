@@ -18,15 +18,6 @@ class NotificationService {
     onAction = onNotificationAction;
 
     tz_data.initializeTimeZones();
-    try {
-      final offsetMs = DateTime.now().timeZoneOffset.inMilliseconds;
-      for (final loc in tz.timeZoneDatabase.locations.values) {
-        if (loc.currentTimeZone.offset == offsetMs) {
-          tz.setLocalLocation(loc);
-          break;
-        }
-      }
-    } catch (_) {}
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings(
@@ -152,11 +143,10 @@ class NotificationService {
       final times = _generateScheduleTimes(state.tatastha, now);
       for (final t in times) {
         if (isTimeEligible(t) && notifId < 1500) {
-          // Enforce minimum gap from any existing event at the same second
-          final minGapSec = (state.exhale.periodicSeconds < 60 || state.tatastha.periodicSeconds < 60) ? 3 : 35;
+          // Enforce minimum 35-second gap from any existing event at the same second
           DateTime adjusted = t;
-          while (allEvents.any((e) => e.time.difference(adjusted).abs().inSeconds < minGapSec)) {
-            adjusted = adjusted.add(Duration(seconds: minGapSec));
+          while (allEvents.any((e) => e.time.difference(adjusted).abs().inSeconds < 35)) {
+            adjusted = adjusted.add(const Duration(seconds: 35));
           }
           allEvents.add(_ScheduledEvent(
             id: notifId++,
@@ -189,28 +179,15 @@ class NotificationService {
     final Random rng = Random();
 
     if (config.mode == ScheduleMode.periodic) {
-      final sec = config.periodicSeconds > 0 ? config.periodicSeconds : 600;
-      if (sec < 60) {
-        // Fast test mode: schedule slots every `sec` seconds for the next 3 minutes
-        DateTime next = now.add(Duration(seconds: sec));
-        final limit = now.add(const Duration(minutes: 3));
-        int count = 0;
-        while (next.isBefore(limit) && count < 36) {
-          results.add(next);
-          next = next.add(Duration(seconds: sec));
-          count++;
-        }
-      } else {
-        final intervalMinutes = max(1, (sec / 60).round());
-        // Generate up to 24 hours of periodic slots (up to 96 occurrences)
-        DateTime next = now.add(Duration(minutes: intervalMinutes));
-        final limit = now.add(const Duration(hours: 24));
-        int count = 0;
-        while (next.isBefore(limit) && count < 96) {
-          results.add(next);
-          next = next.add(Duration(minutes: intervalMinutes));
-          count++;
-        }
+      final interval = max(1, config.periodicMinutes);
+      // Generate up to 24 hours of periodic slots (up to 96 occurrences)
+      DateTime next = now.add(Duration(minutes: interval));
+      final limit = now.add(const Duration(hours: 24));
+      int count = 0;
+      while (next.isBefore(limit) && count < 96) {
+        results.add(next);
+        next = next.add(Duration(minutes: interval));
+        count++;
       }
     } else {
       // Random scheduling: distribute N random reminders per hour for the next 24 hours

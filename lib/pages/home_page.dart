@@ -827,14 +827,8 @@ class HomePage extends StatelessWidget {
     final enabled = config.enabled;
 
     String intervalDesc = '';
-    final is5sTest = config.mode == ScheduleMode.periodic &&
-        config.periodicSeconds == 5;
     if (config.mode == ScheduleMode.periodic) {
-      if (config.periodicSeconds < 60) {
-        intervalDesc = '⚡ ${config.periodicSeconds}s test';
-      } else {
-        intervalDesc = '${(config.periodicSeconds / 60).round()} ${l.minUnit}';
-      }
+      intervalDesc = '${config.periodicMinutes} ${l.minUnit}';
     } else {
       intervalDesc = '${config.randomPerHour}/hr';
     }
@@ -953,9 +947,7 @@ class HomePage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: is5sTest
-                            ? const Color(0xFFFEF3C7)
-                            : Colors.grey.shade100,
+                        color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -963,79 +955,7 @@ class HomePage extends StatelessWidget {
                         style: GoogleFonts.poppins(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: is5sTest
-                              ? const Color(0xFFB45309)
-                              : Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-                    // Quick 5s test loop toggle chip
-                    GestureDetector(
-                      onTap: () {
-                        if (is5sTest) {
-                          state.setPeriodicSeconds(config, 600);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Restored $title interval to 10 minutes.'),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        } else {
-                          state.setMode(config, ScheduleMode.periodic);
-                          state.setPeriodicSeconds(config, 5);
-                          if (!config.enabled) {
-                            state.setEnabled(config, true);
-                          }
-                          if (state.isMasterPaused) {
-                            state.resumeAll();
-                          }
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('⚡ 5-second test loop active for $title!'),
-                              backgroundColor: colors[0],
-                              duration: const Duration(seconds: 3),
-                            ),
-                          );
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: is5sTest
-                              ? const Color(0xFFFEF3C7)
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: is5sTest
-                                ? const Color(0xFFD97706)
-                                : Colors.grey.shade300,
-                            width: is5sTest ? 1.2 : 1.0,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.bolt_rounded,
-                              size: 13,
-                              color: is5sTest
-                                  ? const Color(0xFFB45309)
-                                  : Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              is5sTest ? '5s Loop (ON)' : '5s Test',
-                              style: GoogleFonts.poppins(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w600,
-                                color: is5sTest
-                                    ? const Color(0xFFB45309)
-                                    : Colors.grey.shade700,
-                              ),
-                            ),
-                          ],
+                          color: Colors.grey.shade700,
                         ),
                       ),
                     ),

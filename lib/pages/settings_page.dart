@@ -653,73 +653,34 @@ class SettingsPage extends StatelessWidget {
 
   Widget _periodicRow(
       BuildContext context, L l, ReminderConfig config, Color accent) {
-    const validValues = [5, 60, 120, 300, 600, 900, 1200, 1800, 2700, 3600];
-    final currentVal = validValues.contains(config.periodicSeconds)
-        ? config.periodicSeconds
-        : 600;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: config.periodicSeconds == 5
-            ? const Color(0xFFFFFBEB)
-            : Colors.grey.shade50,
+        color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: config.periodicSeconds == 5
-              ? const Color(0xFFF59E0B)
-              : Colors.grey.shade200,
-          width: config.periodicSeconds == 5 ? 1.5 : 1.0,
-        ),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
           isExpanded: true,
-          value: currentVal,
+          value: [1, 2, 5, 10, 15, 20, 30, 45, 60]
+                  .contains(config.periodicMinutes)
+              ? config.periodicMinutes
+              : 15,
           items: const [
-            DropdownMenuItem(
-              value: 5,
-              child: Row(
-                children: [
-                  Icon(Icons.bolt_rounded, color: Color(0xFFD97706), size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    '⚡ Every 5 seconds (Testing)',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFB45309),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            DropdownMenuItem(value: 60, child: Text('Every 1 minute')),
-            DropdownMenuItem(value: 120, child: Text('Every 2 minutes')),
-            DropdownMenuItem(value: 300, child: Text('Every 5 minutes')),
-            DropdownMenuItem(value: 600, child: Text('Every 10 minutes')),
-            DropdownMenuItem(value: 900, child: Text('Every 15 minutes')),
-            DropdownMenuItem(value: 1200, child: Text('Every 20 minutes')),
-            DropdownMenuItem(value: 1800, child: Text('Every 30 minutes')),
-            DropdownMenuItem(value: 2700, child: Text('Every 45 minutes')),
-            DropdownMenuItem(value: 3600, child: Text('Every 1 hour')),
+            DropdownMenuItem(value: 1, child: Text('Every 1 minute')),
+            DropdownMenuItem(value: 2, child: Text('Every 2 minutes')),
+            DropdownMenuItem(value: 5, child: Text('Every 5 minutes')),
+            DropdownMenuItem(value: 10, child: Text('Every 10 minutes')),
+            DropdownMenuItem(value: 15, child: Text('Every 15 minutes')),
+            DropdownMenuItem(value: 20, child: Text('Every 20 minutes')),
+            DropdownMenuItem(value: 30, child: Text('Every 30 minutes')),
+            DropdownMenuItem(value: 45, child: Text('Every 45 minutes')),
+            DropdownMenuItem(value: 60, child: Text('Every 1 hour')),
           ],
           onChanged: (v) {
-            if (v != null) {
-              state.setPeriodicSeconds(config, v);
-              if (v == 5) {
-                if (state.isMasterPaused) {
-                  state.resumeAll();
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('⚡ Testing mode active: Reminder will play every 5 seconds!'),
-                    backgroundColor: Color(0xFF6A3DE8),
-                    duration: Duration(seconds: 3),
-                  ),
-                );
-              }
-            }
+            if (v != null) state.setPeriodicMinutes(config, v);
           },
         ),
       ),

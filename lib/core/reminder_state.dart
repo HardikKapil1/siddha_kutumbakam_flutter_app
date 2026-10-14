@@ -28,22 +28,16 @@ class ReminderConfig {
   bool enabled;
   ScheduleMode mode;
   int randomPerHour;      // for random mode (e.g. 6 times per hour)
-  int periodicSeconds;    // interval in seconds (e.g. 5 for test, 600 for 10 min)
+  int periodicMinutes;    // for periodic mode in minutes (e.g. 10 minutes)
   List<PauseWindow> pauses;
 
   ReminderConfig({
     this.enabled = false,
     this.mode = ScheduleMode.random,
     this.randomPerHour = 6,
-    this.periodicSeconds = 600,
+    this.periodicMinutes = 10,
     List<PauseWindow>? pauses,
   }) : pauses = pauses ?? [];
-
-  int get periodicMinutes =>
-      periodicSeconds < 60 ? 1 : (periodicSeconds / 60).round();
-  set periodicMinutes(int minutes) {
-    periodicSeconds = minutes * 60;
-  }
 
   bool isPaused(DateTime now) => pauses.any((p) => p.isActive(now));
 }
@@ -91,16 +85,14 @@ class AppState extends ChangeNotifier {
     exhale.enabled         = prefs.getBool('exhale_enabled') ?? false;
     exhale.mode            = ScheduleMode.values[prefs.getInt('exhale_mode') ?? 0];
     exhale.randomPerHour   = prefs.getInt('exhale_per_hour') ?? 6;
-    // Load periodicSeconds with backward compatibility
-    if (prefs.containsKey('exhale_period_sec')) {
-      exhale.periodicSeconds = prefs.getInt('exhale_period_sec') ?? 600;
-    } else if (prefs.containsKey('exhale_period_min')) {
-      final min = prefs.getInt('exhale_period_min') ?? 10;
-      exhale.periodicSeconds = min * 60;
+    // Load periodicMinutes with backward compatibility
+    if (prefs.containsKey('exhale_period_min')) {
+      exhale.periodicMinutes = prefs.getInt('exhale_period_min') ?? 10;
     } else if (prefs.containsKey('exhale_period')) {
-      exhale.periodicSeconds = prefs.getInt('exhale_period') ?? 600;
+      final sec = prefs.getInt('exhale_period') ?? 600;
+      exhale.periodicMinutes = (sec / 60).round().clamp(1, 1440);
     } else {
-      exhale.periodicSeconds = 600;
+      exhale.periodicMinutes = 10;
     }
 
     tatastha.enabled       = prefs.getBool('tatastha_enabled') ??
@@ -111,18 +103,15 @@ class AppState extends ChangeNotifier {
     tatastha.randomPerHour = prefs.getInt('tatastha_per_hour') ??
         prefs.getInt('taste_per_hour') ??
         6;
-    if (prefs.containsKey('tatastha_period_sec')) {
-      tatastha.periodicSeconds = prefs.getInt('tatastha_period_sec') ?? 600;
-    } else if (prefs.containsKey('tatastha_period_min')) {
-      final min = prefs.getInt('tatastha_period_min') ?? 10;
-      tatastha.periodicSeconds = min * 60;
+    if (prefs.containsKey('tatastha_period_min')) {
+      tatastha.periodicMinutes = prefs.getInt('tatastha_period_min') ?? 10;
     } else if (prefs.containsKey('taste_period_min')) {
-      final min = prefs.getInt('taste_period_min') ?? 10;
-      tatastha.periodicSeconds = min * 60;
+      tatastha.periodicMinutes = prefs.getInt('taste_period_min') ?? 10;
     } else if (prefs.containsKey('taste_period')) {
-      tatastha.periodicSeconds = prefs.getInt('taste_period') ?? 600;
+      final sec = prefs.getInt('taste_period') ?? 600;
+      tatastha.periodicMinutes = (sec / 60).round().clamp(1, 1440);
     } else {
-      tatastha.periodicSeconds = 600;
+      tatastha.periodicMinutes = 10;
     }
 
     notificationMode = NotificationMode.values[prefs.getInt('notif_mode') ?? 0];
@@ -162,13 +151,11 @@ class AppState extends ChangeNotifier {
     await prefs.setBool('exhale_enabled', exhale.enabled);
     await prefs.setInt('exhale_mode', exhale.mode.index);
     await prefs.setInt('exhale_per_hour', exhale.randomPerHour);
-    await prefs.setInt('exhale_period_sec', exhale.periodicSeconds);
     await prefs.setInt('exhale_period_min', exhale.periodicMinutes);
 
     await prefs.setBool('tatastha_enabled', tatastha.enabled);
     await prefs.setInt('tatastha_mode', tatastha.mode.index);
     await prefs.setInt('tatastha_per_hour', tatastha.randomPerHour);
-    await prefs.setInt('tatastha_period_sec', tatastha.periodicSeconds);
     await prefs.setInt('tatastha_period_min', tatastha.periodicMinutes);
     // Also store taste keys for backward compatibility
     await prefs.setBool('taste_enabled', tatastha.enabled);
@@ -259,17 +246,7 @@ class AppState extends ChangeNotifier {
   }
 
   void setPeriodicMinutes(ReminderConfig c, int v) {
-    c.periodicSeconds = v.clamp(1, 1440) * 60;
-    if (identical(c, exhale)) {
-      _lastExhaleTime = DateTime.now();
-    } else {
-      _lastTatasthaTime = DateTime.now();
-    }
-    _update();
-  }
-
-  void setPeriodicSeconds(ReminderConfig c, int v) {
-    c.periodicSeconds = v.clamp(5, 86400);
+    c.periodicMinutes = v.clamp(1, 1440);
     if (identical(c, exhale)) {
       _lastExhaleTime = DateTime.now();
     } else {
@@ -370,9 +347,7 @@ class AppState extends ChangeNotifier {
   bool isEffectivelyPaused() {
     if (isMasterPaused) return true;
     final now = DateTime.now();
-    final hasTestInterval = (exhale.enabled && exhale.periodicSeconds <= 10) ||
-        (tatastha.enabled && tatastha.periodicSeconds <= 10);
-    if (isNightTime(now) && !hasTestInterval) return true;
+    if (isNightTime(now)) return true;
     if (isMeetingPaused) return true;
     return false;
   }
@@ -401,10 +376,8 @@ class AppState extends ChangeNotifier {
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       final current = DateTime.now();
 
-      // Check global suppressions (test interval <= 10s bypasses night mode)
-      final hasTestInterval = (exhale.enabled && exhale.periodicSeconds <= 10) ||
-          (tatastha.enabled && tatastha.periodicSeconds <= 10);
-      if (isMasterPaused || (isNightTime(current) && !hasTestInterval) || isMeetingPaused) {
+      // Check global suppressions
+      if (isMasterPaused || isNightTime(current) || isMeetingPaused) {
         return;
       }
 
@@ -441,9 +414,9 @@ class AppState extends ChangeNotifier {
     if (lastTrigger == null) return true;
 
     if (config.mode == ScheduleMode.periodic) {
-      final intervalSeconds = max(5, config.periodicSeconds);
+      final intervalMinutes = max(1, config.periodicMinutes);
       final elapsedSeconds = now.difference(lastTrigger).inSeconds;
-      return elapsedSeconds >= intervalSeconds;
+      return elapsedSeconds >= (intervalMinutes * 60);
     } else {
       // Random mode: spread N triggers per hour across 3600 seconds
       // Minimum gap of 60 seconds between consecutive random triggers
