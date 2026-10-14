@@ -1,0 +1,45 @@
+name: siddha_kutumbakam_reminder
+description: Siddha Kutumbakam mindful Exhale and Taste audio reminder app.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.3
+  just_audio: ^0.10.4
+  flutter_local_notifications: ^19.4.1
+  timezone: ^0.10.1
+  intl: ^0.20.2
+  google_fonts: ^6.2.1
+  vibration: ^3.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/images/app_logo.jpeg"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_logo.jpeg"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/siddha_kutumbakam_logo.jpg
+    - assets/images/baba.jpeg
+    - assets/images/app_logo.jpeg
+    - assets/audio/reminder.mpeg
+    - assets/audio/exhale.mp3
+    - assets/audio/exhale.mpeg
+    - assets/audio/tatastha.mp3
+    - assets/audio/tatastha.mpeg
+
